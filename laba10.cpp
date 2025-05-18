@@ -1,326 +1,217 @@
 #include <iostream>
+#include <vector>
+#include <memory>
 #include <fstream>
 #include <sstream>
-#include <vector>
-#include <string>
-#include <mutex>
-#include <memory>
-#include <stdexcept>
+#include <algorithm>
 
-// ==================== Логгер ====================
-template<typename T>
-class Logger {
+// Base class User
+class User {
 private:
-    static std::ofstream logFile;
-    static std::mutex mtx;
+    std::string name;
+    int id;
+    int accessLevel;
 
 public:
-    static void log(const T& message);
+    User(const std::string& name, int id, int accessLevel)
+        : name(name), id(id), accessLevel(accessLevel) {
+        if (name.empty()) throw std::invalid_argument("Name cannot be empty.");
+        if (accessLevel < 0) throw std::invalid_argument("Access level cannot be negative.");
+    }
+
+    virtual ~User() = default;
+
+    const std::string& getName() const { return name; }
+    int getId() const { return id; }
+    int getAccessLevel() const { return accessLevel; }
+
+    void setName(const std::string& newName) {
+        if (newName.empty()) throw std::invalid_argument("Name cannot be empty.");
+        name = newName;
+    }
+
+    void setId(int newId) { id = newId; }
+    void setAccessLevel(int level) {
+        if (level < 0) throw std::invalid_argument("Access level cannot be negative.");
+        accessLevel = level;
+    }
+
+    virtual void displayInfo() const {
+        std::cout << "Name: " << name
+            << ", ID: " << id
+            << ", Access Level: " << accessLevel;
+    }
 };
 
-// 
-template<typename T>
-std::ofstream Logger<T>::logFile("game.log", std::ios::app);
-
-template<typename T>
-std::mutex Logger<T>::mtx;
-
-template<>
-void Logger<std::string>::log(const std::string& message) {
-    std::lock_guard<std::mutex> lock(mtx);
-    if (logFile.is_open()) {
-        logFile << message << std::endl;
-    }
-}
-
-// ==================== Инвентарь ====================
-class Inventory {
+// Derived classes
+class Student : public User {
 private:
-    std::vector<std::string> items;
+    std::string group;
 
 public:
-    void addItem(const std::string& item) {
-        items.push_back(item);
-        std::cout << "Added " << item << " to inventory." << std::endl;
+    Student(const std::string& name, int id, int accessLevel, const std::string& group)
+        : User(name, id, accessLevel), group(group) {
     }
 
-    void removeItem(const std::string& item) {
-        for (auto it = items.begin(); it != items.end(); ++it) {
-            if (*it == item) {
-                items.erase(it);
-                std::cout << "Removed " << item << " from inventory." << std::endl;
-                return;
-            }
-        }
-        std::cout << "Item not found in inventory." << std::endl;
+    void displayInfo() const override {
+        User::displayInfo();
+        std::cout << ", Group: " << group << std::endl;
+    }
+};
+
+class Teacher : public User {
+private:
+    std::string department;
+
+public:
+    Teacher(const std::string& name, int id, int accessLevel, const std::string& department)
+        : User(name, id, accessLevel), department(department) {
     }
 
-    void displayItems() const {
-        std::cout << "Inventory:" << std::endl;
+    void displayInfo() const override {
+        User::displayInfo();
+        std::cout << ", Department: " << department << std::endl;
+    }
+};
+
+class Administrator : public User {
+public:
+    Administrator(const std::string& name, int id, int accessLevel)
+        : User(name, id, accessLevel) {
+    }
+
+    void displayInfo() const override {
+        User::displayInfo();
+        std::cout << ", Role: Administrator" << std::endl;
+    }
+};
+
+// Resource class
+class Resource {
+private:
+    std::string name;
+    int requiredAccessLevel;
+
+public:
+    Resource(const std::string& name, int requiredAccessLevel)
+        : name(name), requiredAccessLevel(requiredAccessLevel) {
+    }
+
+    bool checkAccess(const User& user) const {
+        return user.getAccessLevel() >= requiredAccessLevel;
+    }
+
+    void displayInfo() const {
+        std::cout << "Resource: " << name
+            << ", Required Access Level: " << requiredAccessLevel << std::endl;
+    }
+
+    const std::string& getName() const { return name; }
+};
+
+// Template class for Access Control System
+template<typename T>
+class AccessControlSystem {
+private:
+    std::vector<std::unique_ptr<T>> items;
+
+public:
+    void addItem(std::unique_ptr<T> item) {
+        items.push_back(std::move(item));
+    }
+
+    void displayAll() const {
         for (const auto& item : items) {
-            std::cout << "- " << item << std::endl;
+            item->displayInfo(); // Polymorphism here
         }
     }
-};
 
-// ==================== Character ====================
-class Monster; 
-
-class Character {
-private:
-    std::string name;
-    int health;
-    int attack;
-    int defense;
-    int level;
-    int experience;
-    Inventory inventory;
-
-public:
-    Character(const std::string& n, int h, int a, int d)
-        : name(n), health(h), attack(a), defense(d), level(1), experience(0) {
+    const std::vector<std::unique_ptr<T>>& getAllItems() const {
+        return items;
     }
 
-    void attackEnemy(Monster& enemy);
-    void heal(int amount);
-    void gainExperience(int exp);
-    void displayInfo() const;
-    void addItemToInventory(const std::string& item);
-    void showInventory() const;
-    std::string getName() const { return name; }
-    int getHealth() const { return health; }
+    void saveToFile(const std::string& filename) const {
+        std::ofstream out(filename);
+        if (!out.is_open()) {
+            throw std::runtime_error("Failed to open file for writing.");
+        }
 
-    
-    int getAttack() const { return attack; }
-    int getDefense() const { return defense; }
-};
+        for (const auto& item : items) {
+            out << item->getName() << std::endl;
+        }
+    }
 
-// ==================== Монстрик ====================
-class Monster {
-protected:
-    std::string name;
-    int health;
-    int attack;
-    int defense;
+    void loadFromFile(const std::string& filename) {
+        std::ifstream in(filename);
+        if (!in.is_open()) {
+            throw std::runtime_error("Failed to open file for reading.");
+        }
 
-public:
-    virtual ~Monster() = default;
-    virtual void takeDamage(int damage);
-    virtual void attackPlayer(Character& player);
-    virtual void displayInfo() const;
-    virtual std::string getName() const { return name; }
-    virtual int getHealth() const { return health; }
-    virtual int getAttack() const { return attack; }
-    virtual int getDefense() const { return defense; }
-};
+        std::string name;
+        while (std::getline(in, name)) {
+            items.push_back(std::make_unique<Resource>(name, 2)); // Simplified example
+        }
+    }
 
-class Goblin : public Monster {
-public:
-    Goblin() {
-        name = "Goblin";
-        health = 30;
-        attack = 8;
-        defense = 2;
+    template<typename Compare>
+    void sortItems(Compare comp) {
+        std::sort(items.begin(), items.end(), comp);
     }
 };
 
-class Dragon : public Monster {
-public:
-    Dragon() {
-        name = "Dragon";
-        health = 150;
-        attack = 25;
-        defense = 10;
-    }
-};
-
-class Skeleton : public Monster {
-public:
-    Skeleton() {
-        name = "Skeleton";
-        health = 40;
-        attack = 10;
-        defense = 5;
-    }
-};
-
-
-void Character::attackEnemy(Monster& enemy) {
-    int damage = getAttack() - enemy.getDefense();
-    if (damage > 0) {
-        enemy.takeDamage(damage);
-        std::cout << name << " attacks " << enemy.getName() << " for " << damage << " damage!" << std::endl;
-        Logger<std::string>::log(name + " attacks " + enemy.getName() + " for " + std::to_string(damage) + " damage!");
-    }
-    else {
-        std::cout << name << " attacks " << enemy.getName() << ", but it has no effect!" << std::endl;
-        Logger<std::string>::log(name + " attacks " + enemy.getName() + ", but it has no effect!");
-    }
-}
-
-void Character::heal(int amount) {
-    health += amount;
-    if (health > 100) health = 100;
-    std::cout << name << " heals for " << amount << " HP!" << std::endl;
-    Logger<std::string>::log(name + " heals for " + std::to_string(amount) + " HP!");
-}
-
-void Character::gainExperience(int exp) {
-    experience += exp;
-    while (experience >= 100 * level) {
-        level++;
-        experience -= 100 * level;
-        attack += 2;
-        defense += 1;
-        std::cout << name << " leveled up to level " << level << "!" << std::endl;
-        Logger<std::string>::log(name + " leveled up to level " + std::to_string(level) + "!");
-    }
-}
-
-void Character::displayInfo() const {
-    std::cout << "Name: " << name << ", HP: " << health
-        << ", Attack: " << attack << ", Defense: " << defense
-        << ", Level: " << level << ", Experience: " << experience << std::endl;
-}
-
-void Character::addItemToInventory(const std::string& item) {
-    inventory.addItem(item);
-}
-
-void Character::showInventory() const {
-    inventory.displayItems();
-}
-
-
-void Monster::takeDamage(int damage) {
-    health -= damage;
-    if (health <= 0) {
-        health = 0;
-        std::cout << name << " has been defeated!" << std::endl;
-        Logger<std::string>::log(name + " has been defeated!");
-    }
-}
-
-void Monster::attackPlayer(Character& player) {
-    int damage = attack - player.getDefense(); 
-    if (damage > 0) {
-        player.attackEnemy(*this);
-    }
-    else {
-        std::cout << name << " attacks " << player.getName() << ", but it has no effect!" << std::endl;
-        Logger<std::string>::log(name + " attacks " + player.getName() + ", but it has no effect!");
-    }
-}
-
-void Monster::displayInfo() const {
-    std::cout << "Name: " << name << ", HP: " << health
-        << ", Attack: " << attack << ", Defense: " << defense << std::endl;
-}
-
-// ==================== Игрушка ====================
-class Game {
-private:
-    Character player;
-
-public:
-    Game() : player("Hero", 100, 10, 5) {}
-
-    void start();
-    void battle(Monster& monster);
-    void saveGame();
-    void loadGame();
-};
-
-void Game::start() {
-    std::cout << "Welcome to the RPG Adventure!" << std::endl;
-    player.displayInfo();
-
-    Goblin goblin;
-    battle(goblin);
-
-    Skeleton skeleton;
-    battle(skeleton);
-
-    Dragon dragon;
-    battle(dragon);
-
-    player.addItemToInventory("Sword");
-    player.addItemToInventory("Potion of Healing");
-
-    player.showInventory();
-
-    saveGame();
-    loadGame();
-}
-
-void Game::battle(Monster& monster) {
-    std::cout << "\nA wild " << monster.getName() << " appears!\n";
-
-    while (player.getHealth() > 0 && monster.getHealth() > 0) {
-        player.attackEnemy(monster);
-        if (monster.getHealth() <= 0) break;
-
-        monster.attackPlayer(player);
-        player.displayInfo();
-    }
-
-    if (player.getHealth() > 0) {
-        std::cout << "You defeated the " << monster.getName() << "!\n";
-        player.gainExperience(50);
-    }
-    else {
-        std::cout << "You were defeated...\n";
-        exit(0);
-    }
-}
-
-void Game::saveGame() {
-    std::ofstream out("savegame.dat");
-    if (!out.is_open()) {
-        std::cerr << "Failed to open file for saving.\n";
-        return;
-    }
-
-    out << player.getName() << " "
-        << player.getHealth() << " "
-        << player.getAttack() << " "
-        << player.getDefense() << " "
-        << 1 << " "
-        << 0 << std::endl;
-
-    std::cout << "Game saved.\n";
-}
-
-void Game::loadGame() {
-    std::ifstream in("savegame.dat");
-    if (!in.is_open()) {
-        std::cerr << "Failed to open file for loading.\n";
-        return;
-    }
-
-    std::string name;
-    int hp, att, def, level, exp;
-    in >> name >> hp >> att >> def >> level >> exp;
-
-    std::cout << "Game loaded.\n";
-    player = Character(name, hp, att, def);
-    player.displayInfo();
-}
-
-// ==================== Главная функция ====================
 int main() {
     try {
-        Game game;
-        game.start();
+        std::vector<std::unique_ptr<User>> users;
+        users.push_back(std::make_unique<Student>("Ivan Petrov", 1, 2, "Group A"));
+        users.push_back(std::make_unique<Teacher>("Anna Smirnova", 2, 5, "Physics"));
+        users.push_back(std::make_unique<Administrator>("Dmitry Ivanov", 3, 7));
+
+        std::cout << "User Information:\n";
+        for (const auto& user : users) {
+            user->displayInfo();
+            std::cout << std::endl;
+        }
+
+        std::vector<std::unique_ptr<Resource>> resources;
+        resources.push_back(std::make_unique<Resource>("Library", 3));
+        resources.push_back(std::make_unique<Resource>("Lab", 5));
+
+        std::cout << "\nAccess Check:\n";
+        for (const auto& resource : resources) {
+            for (const auto& user : users) {
+                std::cout << user->getName() << " -> " << resource->getName() << ": ";
+                std::cout << (resource->checkAccess(*user) ? "Access Granted" : "Access Denied") << std::endl;
+            }
+        }
+
+        // Using template class
+        AccessControlSystem<Resource> resSystem;
+        resSystem.addItem(std::make_unique<Resource>("Room 101", 2));
+        resSystem.addItem(std::make_unique<Resource>("Computer Lab", 4));
+        resSystem.displayAll();
+
+        // File operations
+        resSystem.saveToFile("resources.txt");
+        AccessControlSystem<Resource> loadedSystem;
+        loadedSystem.loadFromFile("resources.txt");
+        std::cout << "\nLoaded Resources from File:\n";
+        loadedSystem.displayAll();
+
+        // Sorting users by access level
+        std::sort(users.begin(), users.end(), [](const std::unique_ptr<User>& a, const std::unique_ptr<User>& b) {
+            return a->getAccessLevel() > b->getAccessLevel();
+            });
+
+        std::cout << "\nSorted Users by Access Level:\n";
+        for (const auto& user : users) {
+            user->displayInfo();
+            std::cout << std::endl;
+        }
+
     }
-    catch (const std::exception& ex) {
-        std::cerr << "Error: " << ex.what() << std::endl;
-    }
-    catch (...) {
-        std::cerr << "Unknown error occurred!" << std::endl;
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     return 0;
 }
-
-Перепиши комментарии на русский
