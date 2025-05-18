@@ -5,7 +5,7 @@
 #include <sstream>
 #include <algorithm>
 
-// Base class User
+// Базовый класс Пользователь
 class User {
 private:
     std::string name;
@@ -15,8 +15,8 @@ private:
 public:
     User(const std::string& name, int id, int accessLevel)
         : name(name), id(id), accessLevel(accessLevel) {
-        if (name.empty()) throw std::invalid_argument("Name cannot be empty.");
-        if (accessLevel < 0) throw std::invalid_argument("Access level cannot be negative.");
+        if (name.empty()) throw std::invalid_argument("Имя не может быть пустым.");
+        if (accessLevel < 0) throw std::invalid_argument("Уровень доступа не может быть отрицательным.");
     }
 
     virtual ~User() = default;
@@ -26,24 +26,24 @@ public:
     int getAccessLevel() const { return accessLevel; }
 
     void setName(const std::string& newName) {
-        if (newName.empty()) throw std::invalid_argument("Name cannot be empty.");
+        if (newName.empty()) throw std::invalid_argument("Имя не может быть пустым.");
         name = newName;
     }
 
     void setId(int newId) { id = newId; }
     void setAccessLevel(int level) {
-        if (level < 0) throw std::invalid_argument("Access level cannot be negative.");
+        if (level < 0) throw std::invalid_argument("Уровень доступа не может быть отрицательным.");
         accessLevel = level;
     }
 
     virtual void displayInfo() const {
-        std::cout << "Name: " << name
+        std::cout << "Имя: " << name
             << ", ID: " << id
-            << ", Access Level: " << accessLevel;
+            << ", Уровень доступа: " << accessLevel;
     }
 };
 
-// Derived classes
+// Производные классы
 class Student : public User {
 private:
     std::string group;
@@ -55,7 +55,7 @@ public:
 
     void displayInfo() const override {
         User::displayInfo();
-        std::cout << ", Group: " << group << std::endl;
+        std::cout << ", Группа: " << group << std::endl;
     }
 };
 
@@ -70,7 +70,7 @@ public:
 
     void displayInfo() const override {
         User::displayInfo();
-        std::cout << ", Department: " << department << std::endl;
+        std::cout << ", Кафедра: " << department << std::endl;
     }
 };
 
@@ -82,11 +82,11 @@ public:
 
     void displayInfo() const override {
         User::displayInfo();
-        std::cout << ", Role: Administrator" << std::endl;
+        std::cout << ", Роль: Администратор" << std::endl;
     }
 };
 
-// Resource class
+// Класс Ресурс
 class Resource {
 private:
     std::string name;
@@ -97,32 +97,35 @@ public:
         : name(name), requiredAccessLevel(requiredAccessLevel) {
     }
 
+    // Проверка доступа пользователя к ресурсу
     bool checkAccess(const User& user) const {
         return user.getAccessLevel() >= requiredAccessLevel;
     }
 
     void displayInfo() const {
-        std::cout << "Resource: " << name
-            << ", Required Access Level: " << requiredAccessLevel << std::endl;
+        std::cout << "Ресурс: " << name
+            << ", Требуемый уровень доступа: " << requiredAccessLevel << std::endl;
     }
 
     const std::string& getName() const { return name; }
 };
 
-// Template class for Access Control System
+// Шаблонный класс системы контроля доступа
 template<typename T>
 class AccessControlSystem {
 private:
     std::vector<std::unique_ptr<T>> items;
 
 public:
+    // Добавление элемента в систему
     void addItem(std::unique_ptr<T> item) {
         items.push_back(std::move(item));
     }
 
+    // Отображение всех элементов
     void displayAll() const {
         for (const auto& item : items) {
-            item->displayInfo(); // Polymorphism here
+            item->displayInfo(); // Полиморфизм здесь
         }
     }
 
@@ -130,10 +133,11 @@ public:
         return items;
     }
 
+    // Сохранение в файл
     void saveToFile(const std::string& filename) const {
         std::ofstream out(filename);
         if (!out.is_open()) {
-            throw std::runtime_error("Failed to open file for writing.");
+            throw std::runtime_error("Не удалось открыть файл для записи.");
         }
 
         for (const auto& item : items) {
@@ -141,18 +145,20 @@ public:
         }
     }
 
+    // Загрузка из файла
     void loadFromFile(const std::string& filename) {
         std::ifstream in(filename);
         if (!in.is_open()) {
-            throw std::runtime_error("Failed to open file for reading.");
+            throw std::runtime_error("Не удалось открыть файл для чтения.");
         }
 
         std::string name;
         while (std::getline(in, name)) {
-            items.push_back(std::make_unique<Resource>(name, 2)); // Simplified example
+            items.push_back(std::make_unique<Resource>(name, 2)); // Упрощенный пример
         }
     }
 
+    // Сортировка элементов
     template<typename Compare>
     void sortItems(Compare comp) {
         std::sort(items.begin(), items.end(), comp);
@@ -162,47 +168,47 @@ public:
 int main() {
     try {
         std::vector<std::unique_ptr<User>> users;
-        users.push_back(std::make_unique<Student>("Ivan Petrov", 1, 2, "Group A"));
-        users.push_back(std::make_unique<Teacher>("Anna Smirnova", 2, 5, "Physics"));
-        users.push_back(std::make_unique<Administrator>("Dmitry Ivanov", 3, 7));
+        users.push_back(std::make_unique<Student>("Иван Петров", 1, 2, "Группа А"));
+        users.push_back(std::make_unique<Teacher>("Анна Смирнова", 2, 5, "Физика"));
+        users.push_back(std::make_unique<Administrator>("Дмитрий Иванов", 3, 7));
 
-        std::cout << "User Information:\n";
+        std::cout << "Информация о пользователях:\n";
         for (const auto& user : users) {
             user->displayInfo();
             std::cout << std::endl;
         }
 
         std::vector<std::unique_ptr<Resource>> resources;
-        resources.push_back(std::make_unique<Resource>("Library", 3));
-        resources.push_back(std::make_unique<Resource>("Lab", 5));
+        resources.push_back(std::make_unique<Resource>("Библиотека", 3));
+        resources.push_back(std::make_unique<Resource>("Лаборатория", 5));
 
-        std::cout << "\nAccess Check:\n";
+        std::cout << "\nПроверка доступа:\n";
         for (const auto& resource : resources) {
             for (const auto& user : users) {
                 std::cout << user->getName() << " -> " << resource->getName() << ": ";
-                std::cout << (resource->checkAccess(*user) ? "Access Granted" : "Access Denied") << std::endl;
+                std::cout << (resource->checkAccess(*user) ? "Доступ разрешен" : "Доступ запрещен") << std::endl;
             }
         }
 
-        // Using template class
+        // Использование шаблонного класса
         AccessControlSystem<Resource> resSystem;
-        resSystem.addItem(std::make_unique<Resource>("Room 101", 2));
-        resSystem.addItem(std::make_unique<Resource>("Computer Lab", 4));
+        resSystem.addItem(std::make_unique<Resource>("Комната 101", 2));
+        resSystem.addItem(std::make_unique<Resource>("Компьютерный класс", 4));
         resSystem.displayAll();
 
-        // File operations
+        // Работа с файлами
         resSystem.saveToFile("resources.txt");
         AccessControlSystem<Resource> loadedSystem;
         loadedSystem.loadFromFile("resources.txt");
-        std::cout << "\nLoaded Resources from File:\n";
+        std::cout << "\nЗагруженные ресурсы из файла:\n";
         loadedSystem.displayAll();
 
-        // Sorting users by access level
+        // Сортировка пользователей по уровню доступа
         std::sort(users.begin(), users.end(), [](const std::unique_ptr<User>& a, const std::unique_ptr<User>& b) {
             return a->getAccessLevel() > b->getAccessLevel();
             });
 
-        std::cout << "\nSorted Users by Access Level:\n";
+        std::cout << "\nПользователи, отсортированные по уровню доступа:\n";
         for (const auto& user : users) {
             user->displayInfo();
             std::cout << std::endl;
@@ -210,7 +216,7 @@ int main() {
 
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << "Ошибка: " << e.what() << std::endl;
     }
 
     return 0;
